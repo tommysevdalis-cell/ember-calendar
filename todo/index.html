@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Ember To-do</title>
+<meta name="theme-color" content="#d6d8db">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="To-do">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="../shared/ember.css">
+<script src="../config.js"></script>
+<script src="../shared/ember.js"></script>
+<style>
+/* To-do: view tabs as a row of keys, quick-add on a plate, each task a row with a keycap checkbox that presses down orange. */
+.main{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;max-width:760px;width:100%}
+.tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+.tab{border:0;border-radius:12px;background:var(--surface);height:58px;box-shadow:var(--key-shadow);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;font-weight:700;font-size:14px;transition:background .15s,color .15s,transform .08s}
+.tab small{font-family:var(--f-mono);font-size:11px;font-weight:500;color:var(--muted);font-variant-numeric:tabular-nums}
+.tab[aria-selected="true"]{background:var(--slate);color:var(--on-slate)}
+.tab[aria-selected="true"] small{color:#b9c0c9}
+.tab.alert small{color:var(--accent);font-weight:700}
+.tab:active{transform:translateY(2px);box-shadow:none}
+@media (max-width:420px){.tab{height:52px;font-size:13px}}
+
+.quick{display:flex;gap:8px;align-items:center}
+.quick input{flex:1;min-width:0;height:46px;border:0;border-radius:11px;background:var(--surface);padding:0 14px;font-size:16px;box-shadow:inset 0 1px 2px rgba(44,50,60,.12);outline:none}
+.quick input:focus{box-shadow:inset 0 0 0 2px var(--accent)}
+.quick .btn{height:46px}
+.qwhen{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.qwhen button{border:0;border-radius:999px;background:var(--surface);padding:6px 12px;font-size:13px;font-weight:700;box-shadow:0 2px 0 rgba(44,50,60,.16);transition:background .15s,color .15s}
+.qwhen button[aria-pressed="true"]{background:var(--accent);color:var(--on-accent);box-shadow:0 2px 0 #b8380f}
+.qwhen button:active{transform:translateY(2px);box-shadow:none}
+
+.groups{display:flex;flex-direction:column;gap:16px}
+.group h2{font-family:var(--f-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 2px 8px;font-weight:500;display:flex;justify-content:space-between;align-items:center}
+.group h2.late{color:var(--accent)}
+.rows{display:flex;flex-direction:column;gap:8px}
+.task{display:grid;grid-template-columns:48px minmax(0,1fr);gap:12px;align-items:center;background:var(--surface);border-radius:14px;padding:10px 12px 10px 10px;box-shadow:var(--key-shadow),inset 4px 0 0 var(--c);animation:slideIn .4s cubic-bezier(.2,1.2,.4,1) both;animation-delay:calc(var(--i) * 40ms)}
+.rows.quiet .task{animation:none}
+.check{width:44px;height:44px;border:0;border-radius:11px;background:var(--surface-2);box-shadow:0 3px 0 rgba(44,50,60,.22),inset 0 0 0 1.5px rgba(44,50,60,.08);display:grid;place-items:center;color:transparent;transition:background .18s,box-shadow .1s,transform .1s}
+.check svg{width:24px;height:24px;stroke-dasharray:24;stroke-dashoffset:24;transition:stroke-dashoffset .35s ease .05s}
+.check:active{transform:translateY(3px);box-shadow:0 0 0 rgba(0,0,0,0)}
+@media (hover:hover){.check:hover{background:#dde0e3}.check:hover svg{color:var(--faint);stroke-dashoffset:0}}
+.task.done .check{background:var(--accent);color:var(--on-accent);box-shadow:0 3px 0 #b8380f;animation:keyTap .35s cubic-bezier(.3,1.6,.5,1)}
+.task.done .check svg{stroke-dashoffset:0;color:var(--on-accent)}
+.tbody{min-width:0;text-align:left;border:0;background:none;padding:2px 0;display:flex;flex-direction:column;gap:3px}
+.tbody b{font-weight:700;font-size:15.5px;overflow-wrap:anywhere;transition:color .3s}
+.task.done .tbody b{color:var(--muted);text-decoration:line-through;text-decoration-color:var(--accent);text-decoration-thickness:2px}
+.tmeta{display:flex;gap:6px 10px;flex-wrap:wrap;align-items:center;font-family:var(--f-mono);font-size:11px;color:var(--muted);letter-spacing:.03em}
+.tmeta span{display:inline-flex;align-items:center;gap:4px}
+.tmeta svg{width:12px;height:12px}
+.tmeta .late{color:var(--accent);font-weight:500}
+.tmeta .flag{color:var(--accent)}
+.tnote{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.task.leaving{animation:leave .45s cubic-bezier(.4,0,.2,1) forwards}
+@keyframes leave{to{opacity:0;transform:translateX(30px) scale(.97);height:0;padding-top:0;padding-bottom:0;margin-top:-8px}}
+.clearbar{display:flex;justify-content:flex-end}
+@media (max-width:640px){.nav .btn.primary{display:none}}
+@media (min-width:641px){.fab{display:none}}
+
+/* editor */
+.ed-title{border:0;background:none;font-family:var(--f-display);font-weight:800;font-size:1.5rem;letter-spacing:-.02em;color:var(--slate);padding:2px 0;outline:none;width:100%}
+.ed-title::placeholder{color:var(--faint)}
+</style>
+</head>
+<body>
+<div class="e-app">
+  <header class="e-top">
+    <div class="e-title">
+      <div class="eyebrow"><span id="sync" class="sync"><i></i><span id="syncTxt">Connecting…</span></span></div>
+      <h1 id="title">To-do</h1>
+    </div>
+    <nav class="nav">
+      <button class="btn primary spin" id="newBtn" type="button"></button>
+      <button class="btn icon gear" id="setBtn" type="button" aria-label="Settings"></button>
+    </nav>
+  </header>
+
+  <div class="main">
+    <div class="tabs" role="tablist" aria-label="Views" id="tabs"></div>
+
+    <form class="plate" id="quickForm" autocomplete="off">
+      <div class="quick">
+        <input id="quick" placeholder="Add a task" maxlength="200" aria-label="New task">
+        <button class="btn primary icon spin" type="submit" id="quickGo" aria-label="Add task"></button>
+      </div>
+      <div class="qwhen" id="qwhen" role="group" aria-label="When"></div>
+    </form>
+
+    <div class="groups" id="groups"></div>
+    <div class="empty" id="empty" hidden></div>
+    <div class="clearbar" id="clearbar" hidden><button type="button" class="btn del" id="clearDone">Clear completed</button></div>
+  </div>
+</div>
+
+<button class="btn primary fab spin" id="fab" type="button" aria-label="New task"></button>
+<div id="alarms"></div>
+
+<div class="scrim" id="edScrim" hidden>
+  <form class="sheet" id="ed" role="dialog" aria-modal="true" aria-labelledby="edH" autocomplete="off">
+    <h2 id="edH" class="lbl" style="font-family:var(--f-mono);font-size:11px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase">New task</h2>
+    <input class="ed-title" id="edTitle" placeholder="What needs doing?" maxlength="200" aria-label="Task">
+    <div class="field"><span class="lbl">Due</span><div id="edDue"></div></div>
+    <div class="collapse" id="timeWrap"><div><div class="row">
+      <div class="field"><label for="edTime">Time</label><input class="in" type="time" id="edTime"></div>
+      <div class="field"><span class="lbl">&nbsp;</span><button type="button" class="btn" id="edNoTime">No time</button></div>
+    </div></div></div>
+    <div class="field"><span class="lbl">Remind me</span><div class="keys" id="edRemind" role="radiogroup" aria-label="Reminder"></div><div class="hint" id="remHint"></div></div>
+    <button type="button" class="switchrow" id="edFlag" role="switch" aria-checked="false"><span class="sw-txt"><b>Important</b><small>Floats to the top of its day</small></span><span class="switch"><span class="knob"></span></span></button>
+    <div class="field"><span class="lbl">Colour</span><div class="swatches" id="edSw"></div></div>
+    <div class="field"><label for="edNotes">Notes</label><textarea class="in" id="edNotes" maxlength="2000" placeholder="Optional"></textarea></div>
+    <div class="err" id="edErr" hidden></div>
+    <div class="actions">
+      <button type="button" class="btn del" id="edDel" hidden>Delete</button>
+      <div class="r"><button type="button" class="btn" id="edCancel">Cancel</button><button type="submit" class="btn primary">Save</button></div>
+    </div>
+  </form>
+</div>
+
+<script>
+(function(){
+const E=Ember,{$,pad,key,parse,today,fmt12,dmy,DOWS,MONTHS,LS}=E.util,I=E.ICONS,TAGS=E.TAGS;
+$("newBtn").innerHTML=I.plus+"New task";$("fab").innerHTML=I.plus;$("setBtn").innerHTML=I.gear;$("quickGo").innerHTML=I.plus;
+
+let tasks={},view=LS.get("ember-todo-view","today"),firstPaint=true,lastSig="",quickWhen="today";
+const T=()=>key(today()),TM=()=>{const d=today();d.setDate(d.getDate()+1);return key(d)};
+
+/* ---------- tabs + quick add ---------- */
+const VIEWS=[["today","Today"],["upcoming","Upcoming"],["someday","Someday"],["done","Done"]];
+VIEWS.forEach(([v,l])=>{const b=document.createElement("button");b.type="button";b.className="tab";b.setAttribute("role","tab");b.dataset.v=v;b.innerHTML=l+"<small>0</small>";
+  b.addEventListener("click",()=>{view=v;LS.set("ember-todo-view",v);quickWhen=v==="upcoming"?"tomorrow":v==="someday"?"someday":"today";paintWhen();render(true)});$("tabs").appendChild(b)});
+const WHEN=[["today","Today"],["tomorrow","Tomorrow"],["someday","No date"]];
+WHEN.forEach(([w,l])=>{const b=document.createElement("button");b.type="button";b.dataset.w=w;b.textContent=l;b.addEventListener("click",()=>{quickWhen=w;paintWhen()});$("qwhen").appendChild(b)});
+function paintWhen(){$("qwhen").querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.w===quickWhen))}
+quickWhen=view==="upcoming"?"tomorrow":view==="someday"?"someday":"today";paintWhen();
+$("quickForm").addEventListener("submit",async e=>{
+  e.preventDefault();const title=$("quick").value.trim();if(!title)return;
+  const due=quickWhen==="today"?T():quickWhen==="tomorrow"?TM():"";
+  $("quick").value="";
+  const id=E.newId();
+  try{await E.save("tasks",id,{title,notes:"",due,time:"",remind:0,done:false,doneAt:0,flag:false,tag:"ember",created:Date.now()})}catch(err){$("quick").value=title}
+});
+
+/* ---------- grouping ---------- */
+function bucket(t){if(t.done)return"done";if(!t.due)return"someday";if(t.due<=T())return"today";return"upcoming"}
+function sortTasks(a,b){return(a[1].due||"9").localeCompare(b[1].due||"9")||(b[1].flag-a[1].flag)||(a[1].time||"99").localeCompare(b[1].time||"99")||(a[1].created-b[1].created)}
+function dayLabel(k){
+  if(k===T())return"Today";if(k===TM())return"Tomorrow";
+  const d=parse(k);const diff=Math.round((d-today())/864e5);
+  return(diff<7?DOWS[d.getDay()]+" ":DOWS[d.getDay()].slice(0,3)+" ")+dmy(k);
+}
+function groupsFor(v){
+  const list=Object.entries(tasks).filter(([,t])=>bucket(t)===v);
+  if(v==="done")return list.length?[{h:"Completed",rows:list.sort((a,b)=>b[1].doneAt-a[1].doneAt)}]:[];
+  list.sort(sortTasks);
+  if(v==="today"){const late=list.filter(([,t])=>t.due<T()),now=list.filter(([,t])=>t.due===T());const g=[];if(late.length)g.push({h:"Overdue",late:true,rows:late});if(now.length)g.push({h:"Today",rows:now});return g}
+  if(v==="someday")return list.length?[{h:"No date",rows:list}]:[];
+  const by={};list.forEach(r=>{(by[r[1].due]=by[r[1].due]||[]).push(r)});
+  return Object.keys(by).sort().map(k=>({h:dayLabel(k),rows:by[k]}));
+}
+
+/* ---------- render ---------- */
+function row(id,t,i){
+  const el=document.createElement("div");el.className="task"+(t.done?" done":"");el.style.setProperty("--c",TAGS[t.tag]||TAGS.ember);el.style.setProperty("--i",Math.min(i,12));el.dataset.id=id;
+  const c=document.createElement("button");c.type="button";c.className="check";c.innerHTML=I.check;c.setAttribute("aria-label",(t.done?"Mark not done: ":"Mark done: ")+t.title);c.setAttribute("aria-pressed",t.done);
+  c.addEventListener("click",()=>toggle(id,el,c));
+  const b=document.createElement("button");b.type="button";b.className="tbody";
+  const ti=document.createElement("b");ti.textContent=t.title;b.appendChild(ti);
+  const meta=document.createElement("div");meta.className="tmeta";
+  if(t.flag)meta.insertAdjacentHTML("beforeend",'<span class="flag">'+I.flag+"Important</span>");
+  if(t.due&&!t.done){const s=document.createElement("span");const late=t.due<T();if(late)s.className="late";
+    s.textContent=(late?"Overdue · "+dmy(t.due).slice(0,5):view==="today"||view==="upcoming"?"":dayLabel(t.due))+(t.time?(late||view==="someday"?" · ":"")+fmt12(t.time):"");if(s.textContent)meta.appendChild(s)}
+  if(t.remind&&t.time&&!t.done)meta.insertAdjacentHTML("beforeend","<span>"+I.bell+t.remind+" min</span>");
+  if(t.done&&t.doneAt){const d=new Date(t.doneAt);const s=document.createElement("span");s.textContent="Done "+(key(d)===T()?"today":dmy(key(d)));meta.appendChild(s)}
+  if(meta.children.length)b.appendChild(meta);
+  if(t.notes){const n=document.createElement("div");n.className="tnote";n.textContent=t.notes;b.appendChild(n)}
+  b.addEventListener("click",()=>openTask(id));
+  el.append(c,b);return el;
+}
+function render(animate){
+  const counts={};VIEWS.forEach(([v])=>counts[v]=0);Object.values(tasks).forEach(t=>counts[bucket(t)]++);
+  const late=Object.values(tasks).some(t=>!t.done&&t.due&&t.due<T());
+  $("tabs").querySelectorAll(".tab").forEach(b=>{b.setAttribute("aria-selected",b.dataset.v===view);b.querySelector("small").textContent=counts[b.dataset.v];b.classList.toggle("alert",b.dataset.v==="today"&&late)});
+  const groups=groupsFor(view);
+  const sig=JSON.stringify([view,T(),groups.map(g=>[g.h,g.rows.map(([id,t])=>id+t.updated+t.done)])]);
+  const anim=animate||firstPaint;if(sig===lastSig&&!anim)return;lastSig=sig;firstPaint=false;
+  const box=$("groups");box.textContent="";let i=0;
+  groups.forEach(g=>{const s=document.createElement("section");s.className="group";const h=document.createElement("h2");if(g.late)h.className="late";h.innerHTML="<span></span><span></span>";h.firstChild.textContent=g.h;h.lastChild.textContent=g.rows.length;
+    const rows=document.createElement("div");rows.className="rows"+(anim?"":" quiet");g.rows.forEach(([id,t])=>rows.appendChild(row(id,t,i++)));s.append(h,rows);box.appendChild(s)});
+  const em=$("empty");em.hidden=!!groups.length;
+  const msgs={today:["Nothing due today","Add something above, or enjoy the free time."],upcoming:["Nothing coming up","Tasks with a future date show here."],someday:["No undated tasks","Ideas and one-day jobs live here."],done:["Nothing ticked off yet","Finished tasks land here."]};
+  if(!groups.length)em.innerHTML="<b>"+msgs[view][0]+"</b>"+msgs[view][1];
+  $("clearbar").hidden=view!=="done"||!counts.done;const cb=$("clearDone");cb.classList.remove("armed");cb.textContent="Clear completed";
+  setTitle(counts.today+counts.upcoming+counts.someday);
+}
+let shown=-1;function setTitle(n){if(n===shown)return;shown=n;E.rollTitle($("title"),"To-do",n?String(n):"")}
+
+/* ---------- tick ---------- */
+async function toggle(id,el,c){
+  const t=tasks[id];if(!t)return;
+  const done=!t.done;
+  el.classList.toggle("done",done);c.setAttribute("aria-pressed",done);
+  if(done)E.burst(c,14);
+  const item=Object.assign({},t,{done,doneAt:done?Date.now():0});
+  setTimeout(async()=>{
+    if(view!=="done"||!done){el.classList.add("leaving")}
+    setTimeout(async()=>{try{await E.save("tasks",id,item);if(done)E.toast("Nice, done.")}catch(e){render(true)}},view==="done"&&done?0:380);
+  },done?520:120);
+}
+$("clearDone").addEventListener("click",async()=>{
+  const b=$("clearDone");if(!b.classList.contains("armed")){b.classList.add("armed");b.textContent="Tap again to clear";return}
+  const ids=Object.keys(tasks).filter(id=>tasks[id].done);
+  for(const id of ids){try{await E.remove("tasks",id)}catch(e){break}}
+  E.toast("Cleared "+ids.length+(ids.length===1?" task":" tasks"));
+});
+
+/* ---------- editor ---------- */
+let edId=null,edTag="ember",edFlag=false,remind=0;
+const ed=E.sheet($("edScrim"),$("ed"),{focus:$("edTitle")});
+const due=E.datePicker($("edDue"),{allowNone:true,noneLabel:"No date",onChange:syncTime});
+ed.onEscape=()=>{if(due.isOpen){due.close();return false}};
+Object.keys(TAGS).forEach(k=>{const b=document.createElement("button");b.type="button";b.className="sw";b.dataset.k=k;b.style.setProperty("--c",TAGS[k]);b.setAttribute("aria-label",k+" colour");b.addEventListener("click",()=>{edTag=k;paintSw()});$("edSw").appendChild(b)});
+function paintSw(){$("edSw").querySelectorAll(".sw").forEach(b=>b.setAttribute("aria-pressed",b.dataset.k===edTag))}
+[0,5,10,15,20,30].forEach(m=>{const b=document.createElement("button");b.type="button";b.setAttribute("role","radio");b.dataset.m=m;b.innerHTML=m?m+"<small>min</small>":"Off";b.setAttribute("aria-label",m?m+" minutes before":"No reminder");b.addEventListener("click",()=>{remind=m;syncRemind()});$("edRemind").appendChild(b)});
+function syncTime(){$("timeWrap").classList.toggle("open",!!due.value);if(!due.value)$("edTime").value="";syncRemind()}
+function syncRemind(){
+  const noTime=!due.value||!$("edTime").value;if(noTime)remind=0;
+  $("edRemind").querySelectorAll("button").forEach(b=>{const m=Number(b.dataset.m);b.setAttribute("aria-checked",m===remind);b.disabled=noTime&&m!==0});
+  $("remHint").textContent=!due.value?"Give it a due date and time to set a reminder.":!$("edTime").value?"Add a time to set a reminder.":remind?"You'll get a notification "+remind+" minutes before.":"No reminder.";
+}
+$("edTime").addEventListener("input",syncRemind);
+$("edNoTime").addEventListener("click",()=>{$("edTime").value="";syncRemind()});
+$("edFlag").addEventListener("click",()=>{edFlag=!edFlag;$("edFlag").setAttribute("aria-checked",edFlag)});
+function openTask(id){
+  const t=id?tasks[id]:null;edId=id||null;
+  $("edH").textContent=t?"Edit task":"New task";
+  $("edTitle").value=t?t.title:"";$("edNotes").value=t?t.notes:"";
+  due.close();due.set(t?t.due:(view==="today"?T():view==="upcoming"?TM():""));
+  $("edTime").value=t?t.time:"";remind=t?t.remind:0;$("timeWrap").classList.toggle("open",!!due.value);syncRemind();
+  edFlag=t?t.flag:false;$("edFlag").setAttribute("aria-checked",edFlag);edTag=t?t.tag:"ember";paintSw();
+  const d=$("edDel");d.hidden=!t;d.classList.remove("armed");d.textContent="Delete";$("edErr").hidden=true;
+  ed.open();
+}
+$("edCancel").addEventListener("click",()=>ed.close());
+$("ed").addEventListener("submit",async e=>{
+  e.preventDefault();const title=$("edTitle").value.trim();
+  if(!title){const er=$("edErr");er.textContent="Give the task a name.";er.hidden=true;void er.offsetWidth;er.hidden=false;return}
+  const prev=edId?tasks[edId]:null,id=edId||E.newId();
+  const item={title,notes:$("edNotes").value.trim(),due:due.value,time:due.value?$("edTime").value:"",remind:due.value&&$("edTime").value?remind:0,flag:edFlag,tag:edTag,
+    done:prev?prev.done:false,doneAt:prev?prev.doneAt:0,created:prev?prev.created:Date.now(),updated:Date.now()};
+  ed.close();
+  const nb=bucket(item);if(nb!==view&&!prev){view=nb;LS.set("ember-todo-view",nb)}
+  try{await E.save("tasks",id,item);E.toast(prev?"Saved":"Task added")}catch(err){}
+});
+$("edDel").addEventListener("click",async()=>{
+  const d=$("edDel");if(!d.classList.contains("armed")){d.classList.add("armed");d.textContent="Tap again to delete";return}
+  const id=edId;ed.close();try{await E.remove("tasks",id);E.toast("Task deleted")}catch(e){}
+});
+
+/* ---------- in-app reminders when notifications are off ---------- */
+let fired=LS.get("ember-todo-fired",{});
+function checkReminders(){
+  if(E.pushOn)return;const now=Date.now();
+  Object.entries(tasks).forEach(([id,t])=>{if(t.done||!t.due||!t.time||!t.remind)return;
+    const[h,m]=t.time.split(":").map(Number);const at=parse(t.due);at.setHours(h,m,0,0);
+    const fk=id+"@"+t.due+"@"+t.time+"@"+t.remind;
+    if(now>=at-t.remind*60000&&now<at.getTime()+5*60000&&!fired[fk]){fired[fk]=1;LS.set("ember-todo-fired",fired);
+      const mins=Math.max(0,Math.round((at-now)/60000));const a=document.createElement("div");a.className="alarm";a.setAttribute("role","alert");
+      a.innerHTML='<span class="bell">'+I.bell+'</span><div class="txt"><b></b><small></small></div><button type="button">Got it</button>';
+      a.querySelector("b").textContent=t.title;a.querySelector("small").textContent=(mins?"Due in "+mins+" min":"Due now")+" · "+fmt12(t.time);
+      a.querySelector("button").onclick=()=>a.remove();$("alarms").appendChild(a)}});
+}
+setInterval(checkReminders,15000);
+
+/* ---------- wiring ---------- */
+$("newBtn").addEventListener("click",()=>openTask(null));$("fab").addEventListener("click",()=>openTask(null));
+$("setBtn").addEventListener("click",E.openSettings);
+document.addEventListener("keydown",e=>{if(ed.isOpen||/INPUT|TEXTAREA/.test(document.activeElement.tagName)||e.metaKey||e.ctrlKey)return;
+  if(e.key==="n"){e.preventDefault();openTask(null)}else if(e.key==="/"){e.preventDefault();$("quick").focus()}
+  else{const i=["1","2","3","4"].indexOf(e.key);if(i>-1)$("tabs").children[i].click()}});
+let lastDay=T();setInterval(()=>{if(T()!==lastDay){lastDay=T();render(true)}},60000);
+
+E.start({id:"todo",name:"To-do",collections:["tasks"],push:true,pushHint:"Turn these on to get task reminders as real notifications, even when the app is closed.",
+  onData(c,items,why){tasks=items;render(why==="sync"&&firstPaint);checkReminders()},
+  onOpenItem:id=>{if(tasks[id])openTask(id)}
+});
+const open=new URLSearchParams(location.search).get("open");if(open&&tasks[open])openTask(open);
+})();
+</script>
+</body>
+</html>
