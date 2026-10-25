@@ -47,6 +47,7 @@
     { id: "calendar", name: "Calendar", href: "../", icon: "../icons/icon-192.png" },
     { id: "todo", name: "To-do", href: "../todo/", icon: "../todo/icons/icon-192.png" },
     { id: "weather", name: "Weather", href: "../weather/", icon: "../weather/icons/icon-192.png" },
+    { id: "gym", name: "Gym", href: "../gym/", icon: "../gym/icons/icon-192.png" },
   ];
 
   /* ---------- small UI helpers ---------- */
@@ -192,7 +193,7 @@
     if (s) s.classList.toggle("on", on); if (st) st.textContent = txt; if (ss) ss.textContent = txt;
   }
   function coll(name) {
-    if (!colls[name]) colls[name] = { items: LS.get("ember-c-" + name, {}) || {}, sig: "", pending: 0 };
+    if (!colls[name]) colls[name] = { items: LS.get("ember-c-" + name, {}) || {}, sig: "", pending: 0, updated: 0 };
     return colls[name];
   }
   const cache = (name) => LS.set("ember-c-" + name, coll(name).items);
@@ -203,8 +204,10 @@
     try {
       for (const name of app.collections) {
         const c = coll(name); if (c.pending) continue;
-        const d = await api("GET", "/api/c/" + name);
+        const d = await api("GET", "/api/c/" + name + (!force && c.updated && c.sig ? "?since=" + c.updated : ""));
         if (c.pending) continue;
+        if (d.unchanged) continue;
+        c.updated = d.updated || 0;
         const next = d.items || {}, sig = JSON.stringify(next);
         if (force || sig !== c.sig) { c.sig = sig; c.items = next; cache(name); notify(name, "sync"); }
       }
@@ -218,7 +221,7 @@
     const c = coll(name), prev = c.items[id];
     c.items[id] = item; cache(name); notify(name, "local");
     c.pending++;
-    try { await api("PUT", "/api/c/" + name + "/" + id, item); c.sig = ""; }
+    try { await api("PUT", "/api/c/" + name + "/" + id, item); c.sig = ""; c.updated = 0; }
     catch (e) {
       if (prev) c.items[id] = prev; else delete c.items[id];
       cache(name); notify(name, "revert");
@@ -230,7 +233,7 @@
     const c = coll(name), prev = c.items[id];
     delete c.items[id]; cache(name); notify(name, "local");
     c.pending++;
-    try { await api("DELETE", "/api/c/" + name + "/" + id); c.sig = ""; }
+    try { await api("DELETE", "/api/c/" + name + "/" + id); c.sig = ""; c.updated = 0; }
     catch (e) {
       if (prev) c.items[id] = prev; cache(name); notify(name, "revert");
       if (e.code === "auth") lock(); else toast("Couldn't delete. Check your connection.");
