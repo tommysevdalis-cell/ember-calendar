@@ -46,6 +46,7 @@
   const APPS = [
     { id: "calendar", name: "Calendar", href: "../", icon: "../icons/icon-192.png" },
     { id: "todo", name: "To-do", href: "../todo/", icon: "../todo/icons/icon-192.png" },
+    { id: "weather", name: "Weather", href: "../weather/", icon: "../weather/icons/icon-192.png" },
   ];
 
   /* ---------- small UI helpers ---------- */
