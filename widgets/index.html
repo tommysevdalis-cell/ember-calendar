@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Ember Widgets</title>
+<meta name="theme-color" content="#d6d8db">
+<link rel="icon" type="image/png" href="../icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="../shared/ember.css">
+<style>
+/* Install page for the Scriptable widget: three numbered steps (a real sequence), one big Copy key. */
+.steps-list{display:flex;flex-direction:column;gap:10px;max-width:640px}
+.step{display:grid;grid-template-columns:44px minmax(0,1fr);gap:12px;align-items:start;background:var(--surface);border-radius:14px;padding:14px;box-shadow:var(--key-shadow);animation:slideIn .45s cubic-bezier(.2,1.2,.4,1) both;animation-delay:calc(var(--i) * 70ms)}
+.num{width:44px;height:44px;border-radius:11px;background:var(--slate);color:var(--on-slate);display:grid;place-items:center;font-family:var(--f-display);font-weight:800;font-size:20px;box-shadow:0 3px 0 #313844}
+.step.go .num{background:var(--accent);color:var(--on-accent);box-shadow:0 3px 0 #b8380f}
+.step b{display:block;font-size:16px;margin-bottom:2px}
+.step p{margin:0;color:var(--muted);font-size:14px;line-height:1.5}
+.step code{font-family:var(--f-mono);font-size:12.5px;background:var(--surface-2);padding:2px 6px;border-radius:6px;color:var(--fg)}
+.copy{height:54px;width:100%;font-size:16px;margin-top:10px}
+.copy.done{background:var(--slate);box-shadow:0 2px 0 #313844}
+pre{margin:10px 0 0;max-height:180px;overflow:auto;background:var(--surface-2);border-radius:10px;padding:10px 12px;font-family:var(--f-mono);font-size:11px;line-height:1.5;color:var(--muted);white-space:pre}
+.lede{color:var(--muted);max-width:60ch;margin:0}
+</style>
+</head>
+<body>
+<div class="e-app">
+  <header class="e-top"><div class="e-title"><div class="eyebrow">For Scriptable on iPhone</div><h1>Ember <span class="hl">widgets</span></h1></div></header>
+  <p class="lede">Home Screen and Lock Screen widgets for your calendar, tasks and weather. Do this on your iPhone.</p>
+  <div class="steps-list">
+    <div class="step go" style="--i:0"><div class="num">1</div><div><b>Copy the widget script</b><p>Tap the button. It copies the whole script.</p>
+      <button class="btn primary copy" id="copy" type="button">Copy widget script</button>
+      <pre id="code" tabindex="0" aria-label="Widget script">Loading…</pre></div></div>
+    <div class="step" style="--i:1"><div class="num">2</div><div><b>Paste it into Scriptable</b><p>Open Scriptable, tap <code>+</code>, paste, then tap the title at the top and rename it <code>Ember Widget</code>. Tap the play button once and enter your Ember password.</p></div></div>
+    <div class="step" style="--i:2"><div class="num">3</div><div><b>Add the widget</b><p>Long-press your Home Screen, tap <code>Edit</code>, then <code>Add Widget</code>, find <b>Scriptable</b> and pick a size. Long-press the new widget, tap <code>Edit Widget</code>, set Script to <code>Ember Widget</code>, and set Parameter to <code>today</code>, <code>weather</code> or <code>next</code>.</p></div></div>
+  </div>
+</div>
+<script>
+(function(){
+  const pre=document.getElementById("code"),btn=document.getElementById("copy");let code="";
+  fetch("ember-widget.js",{cache:"no-store"}).then(r=>r.text()).then(t=>{code=t;pre.textContent=t}).catch(()=>{pre.textContent="Couldn't load the script. Check your connection and reload."});
+  btn.addEventListener("click",async()=>{
+    if(!code)return;
+    try{await navigator.clipboard.writeText(code);btn.textContent="Copied. Now open Scriptable";btn.classList.add("done")}
+    catch(e){const r=document.createRange();r.selectNodeContents(pre);const s=getSelection();s.removeAllRanges();s.addRange(r);btn.textContent="Selected. Tap Copy in the menu"}
+  });
+})();
+</script>
+</body>
+</html>
