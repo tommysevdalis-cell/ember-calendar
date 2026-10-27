@@ -48,6 +48,7 @@
     { id: "todo", name: "To-do", href: "../todo/", icon: "../todo/icons/icon-192.png" },
     { id: "weather", name: "Weather", href: "../weather/", icon: "../weather/icons/icon-192.png" },
     { id: "gym", name: "Gym", href: "../gym/", icon: "../gym/icons/icon-192.png" },
+    { id: "vault", name: "Vault", href: "../vault/", icon: "../vault/icons/icon-192.png" },
   ];
 
   /* ---------- small UI helpers ---------- */

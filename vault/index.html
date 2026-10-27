@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://ember-calendar.efn-calendar.workers.dev; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<title>Ember Vault</title>
+<meta name="theme-color" content="#d6d8db">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Vault">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="../shared/ember.css">
+<link rel="stylesheet" href="vault.css">
+<script src="../config.js"></script>
+<script src="../shared/ember.js"></script>
+</head>
+<body>
+<!-- Lock screen: shown whenever the vault is locked. -->
+<div class="lock" id="lock">
+  <form class="lock-card" id="lockForm" autocomplete="off">
+    <div class="lock-key" id="lockKey" aria-hidden="true"></div>
+    <h1>Vault</h1>
+    <p id="lockMsg">Loading your vault…</p>
+    <div class="lock-fields" id="lockFields" hidden>
+      <input class="in" type="password" id="mp1" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="Master password">
+      <div class="meter" id="mpMeter" hidden><div class="bar"><i id="mpBar"></i></div><span id="mpLbl"></span></div>
+      <input class="in" type="password" id="mp2" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Type it again" aria-label="Confirm master password" hidden>
+      <label class="ack" id="ackRow" hidden><input type="checkbox" id="ack"> <span>I understand nobody can reset this password. If I forget it, my saved passwords are gone.</span></label>
+      <div class="err" id="lockErr" hidden></div>
+      <button class="btn primary" type="submit" id="lockGo">Unlock</button>
+    </div>
+    <button type="button" class="linkbtn" id="forgot" hidden>Forgot your master password?</button>
+  </form>
+</div>
+
+<div class="e-app" id="app" hidden>
+  <header class="e-top">
+    <div class="e-title">
+      <div class="eyebrow"><span id="sync" class="sync"><i></i><span id="syncTxt">Connecting…</span></span><span id="lockIn"></span></div>
+      <h1 id="title">Vault</h1>
+    </div>
+    <nav class="nav">
+      <button class="btn primary spin hide-sm" id="newBtn" type="button"></button>
+      <button class="btn icon dark" id="lockBtn" type="button" aria-label="Lock vault"></button>
+      <button class="btn icon gear" id="vsetBtn" type="button" aria-label="Vault settings"></button>
+    </nav>
+  </header>
+
+  <div class="main">
+    <div class="issues" id="issues" hidden></div>
+    <div class="tools">
+      <label class="search"><span id="sIcon"></span><input id="q" type="search" placeholder="Search" aria-label="Search passwords" autocomplete="off" autocapitalize="off" spellcheck="false"><button type="button" id="qClear" aria-label="Clear search" hidden></button></label>
+      <div class="filters" id="filters" role="group" aria-label="Filter"></div>
+    </div>
+    <div class="plate"><div class="rows" id="rows"></div></div>
+    <div class="empty" id="empty" hidden></div>
+    <p class="foot">Encrypted on this device with your master password. Your server only stores scrambled data it can't read.</p>
+  </div>
+</div>
+
+<button class="btn primary fab spin" id="fab" type="button" aria-label="New password" hidden></button>
+
+<!-- Detail -->
+<div class="scrim" id="dtScrim" hidden><div class="sheet" id="dtSheet" role="dialog" aria-modal="true" aria-labelledby="dtTitle">
+  <div class="dt-head"><span class="mono-key" id="dtKey"></span><div><h2 id="dtTitle"></h2><a id="dtUrl" target="_blank" rel="noopener noreferrer"></a></div></div>
+  <div class="field-row"><div><span class="lbl">Username</span><div class="val" id="dtUser"></div></div><button type="button" class="btn" id="dtCopyUser">Copy</button></div>
+  <div class="field-row"><div><span class="lbl">Password</span><div class="val pw" id="dtPw"></div></div><div class="pair"><button type="button" class="btn icon" id="dtShow" aria-label="Show password"></button><button type="button" class="btn primary" id="dtCopyPw">Copy</button></div></div>
+  <div class="meter" id="dtMeter"><div class="bar"><i id="dtBar"></i></div><span id="dtLbl"></span></div>
+  <div class="warn" id="dtWarn" hidden></div>
+  <div class="notes" id="dtNotes" hidden></div>
+  <div class="hint" id="dtMeta"></div>
+  <div class="actions"><button type="button" class="btn del" id="dtDel">Delete</button><div class="r"><button type="button" class="btn" id="dtEdit">Edit</button><button type="button" class="btn dark" id="dtClose">Done</button></div></div>
+</div></div>
+
+<!-- Editor -->
+<div class="scrim" id="edScrim" hidden><form class="sheet" id="edSheet" role="dialog" aria-modal="true" aria-labelledby="edH" autocomplete="off">
+  <h2 id="edH">New password</h2>
+  <div class="field"><label for="edTitle">Name</label><input class="in" id="edTitle" maxlength="80" placeholder="Netflix, Uni portal, Bank…"></div>
+  <div class="field"><label for="edUrl">Website</label><input class="in" id="edUrl" maxlength="300" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="netflix.com"></div>
+  <div class="field"><label for="edUser">Username or email</label><input class="in" id="edUser" maxlength="200" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
+  <div class="field"><label for="edPw">Password</label>
+    <div class="pwrow"><input class="in mono" id="edPw" type="password" maxlength="500" autocapitalize="off" autocorrect="off" spellcheck="false"><button type="button" class="btn icon" id="edShow" aria-label="Show password"></button><button type="button" class="btn dark" id="edGenBtn" aria-expanded="false">Generate</button></div>
+    <div class="meter" id="edMeter"><div class="bar"><i id="edBar"></i></div><span id="edLbl"></span></div>
+    <div class="collapse" id="genWrap"><div><div class="gen">
+      <div class="gen-out mono" id="genOut"></div>
+      <div class="gen-len"><label for="genLen">Length</label><input type="range" id="genLen" min="8" max="64" value="20"><b id="genLenV">20</b></div>
+      <div class="gen-opts" id="genOpts"></div>
+      <div class="gen-act"><button type="button" class="btn" id="genAgain">New one</button><button type="button" class="btn primary" id="genUse">Use this</button></div>
+    </div></div></div>
+  </div>
+  <button type="button" class="switchrow" id="edFav" role="switch" aria-checked="false"><span class="sw-txt"><b>Favourite</b><small>Shows at the top</small></span><span class="switch"><span class="knob"></span></span></button>
+  <div class="field"><span class="lbl">Colour</span><div class="swatches" id="edSw"></div></div>
+  <div class="field"><label for="edNotes">Notes</label><textarea class="in" id="edNotes" maxlength="4000" placeholder="Security questions, PINs, recovery codes"></textarea></div>
+  <div class="err" id="edErr" hidden></div>
+  <div class="actions"><div class="r"><button type="button" class="btn" id="edCancel">Cancel</button><button type="submit" class="btn primary" id="edSave">Save</button></div></div>
+</form></div>
+
+<!-- Vault settings -->
+<div class="scrim" id="vsScrim" hidden><div class="sheet" id="vsSheet" role="dialog" aria-modal="true" aria-labelledby="vsH">
+  <h2 id="vsH">Vault settings</h2>
+  <div class="setcard"><div class="sc-head"><span class="ibox" id="vsLockIco"></span><div><b>Auto-lock</b><small>Locks after this long without use</small></div></div><div class="keys" id="vsLock" role="radiogroup" aria-label="Auto-lock"></div></div>
+  <div class="setcard"><div class="sc-head"><span class="ibox" id="vsKeyIco"></span><div><b>Master password</b><small id="vsChanged"></small></div></div>
+    <div class="collapse" id="cmWrap"><div><form class="cm" id="cmForm" autocomplete="off">
+      <input class="in" type="password" id="cmOld" placeholder="Current master password" aria-label="Current master password" autocomplete="off">
+      <input class="in" type="password" id="cmNew" placeholder="New master password" aria-label="New master password" autocomplete="off">
+      <div class="meter" id="cmMeter"><div class="bar"><i id="cmBar"></i></div><span id="cmLbl"></span></div>
+      <input class="in" type="password" id="cmNew2" placeholder="Type the new one again" aria-label="Confirm new master password" autocomplete="off">
+      <div class="err" id="cmErr" hidden></div>
+      <button class="btn primary" type="submit" id="cmGo">Change master password</button>
+    </form></div></div>
+    <div class="sc-actions"><button type="button" class="btn" id="cmToggle">Change it</button></div>
+  </div>
+  <div class="setcard"><div class="sc-head"><span class="ibox" id="vsGearIco"></span><div><b>Sync and apps</b><small>Server sync, sign out, other Ember apps</small></div></div><div class="sc-actions"><button type="button" class="btn" id="vsEmber">Open Ember settings</button></div></div>
+  <div class="actions"><div class="r"><button type="button" class="btn dark" id="vsClose">Done</button></div></div>
+</div></div>
+
+<!-- Erase -->
+<div class="scrim" id="erScrim" hidden><form class="sheet" id="erSheet" role="dialog" aria-modal="true" aria-labelledby="erH" autocomplete="off">
+  <h2 id="erH">Start over?</h2>
+  <p class="hint" style="font-size:14px;margin:0">There's no way to reset a master password. That's what keeps your vault private, even from your own server. If you've forgotten it, you can erase the vault and start a new empty one. <b>Every saved password will be deleted.</b></p>
+  <div class="field"><label for="erType">Type ERASE to confirm</label><input class="in" id="erType" autocapitalize="characters" autocomplete="off" spellcheck="false"></div>
+  <div class="actions"><div class="r"><button type="button" class="btn" id="erCancel">Keep trying</button><button type="submit" class="btn del armed" id="erGo" disabled>Erase vault</button></div></div>
+</form></div>
+
+<div class="veil" id="veil" hidden></div>
+<script src="vault.js"></script>
+</body>
+</html>
