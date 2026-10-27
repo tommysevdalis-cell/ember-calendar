@@ -102,3 +102,5 @@
 /* hide contents in the app switcher */
 .veil{position:fixed;inset:0;z-index:45;background:linear-gradient(160deg,#e4e6e8,var(--bg));display:grid;place-items:center}
 .veil::after{content:"";width:72px;height:72px;border-radius:20px;background:var(--slate);box-shadow:0 5px 0 #313844}
+
+#erScrim{z-index:35}
